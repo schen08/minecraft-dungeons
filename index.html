@@ -517,6 +517,21 @@ makeSprite('loot_coin', 16, 16, (c)=>{
   c.fillStyle='#ccaa00'; c.fillText&&null;
   c.fillStyle='#ffee88'; c.beginPath(); c.arc(6,6,3,0,Math.PI*2); c.fill();
 });
+makeSprite('loot_golden_apple', 20, 20, (c)=>{
+  // Stem
+  c.fillStyle='#664400'; c.fillRect(9,2,2,3);
+  // Leaf
+  c.fillStyle='#44aa22'; c.fillRect(10,2,4,2);
+  // Apple body (golden)
+  c.fillStyle='#ffd700'; c.beginPath(); c.arc(10,12,7,0,Math.PI*2); c.fill();
+  // Shine
+  c.fillStyle='#ffee88'; c.beginPath(); c.arc(8,9,3,0,Math.PI*2); c.fill();
+  // Outline
+  c.strokeStyle='#cc9900'; c.lineWidth=1; c.beginPath(); c.arc(10,12,7,0,Math.PI*2); c.stroke();
+  // Enchant sparkles
+  c.fillStyle='#aaaaff'; c.fillRect(4,6,1,1); c.fillRect(15,8,1,1); c.fillRect(6,17,1,1);
+});
+
 makeSprite('loot_axe', 20, 20, (c)=>{
   c.fillStyle='#888888'; c.fillRect(9,4,2,12);
   c.fillStyle='#aaaaaa';
@@ -807,7 +822,7 @@ function generateLevel(lvl) {
     const r=map.rooms[i];
     if(r.type==='start') continue;
     const count = r.type==='boss'
-      ? (lvl===cfg.maxLevels ? 1 : rndInt(1,2))  // boss room: just the boss or 1-2
+      ? (lvl===cfg.maxLevels ? 2 : 1)  // level 5: two bosses; other levels: one boss
       : r.type==='treasure'
         ? 0
         : rndInt(1, 1+Math.floor(lvl*0.6));       // regular: 1-2 on lvl1, 1-4 on lvl5
@@ -821,11 +836,12 @@ function generateLevel(lvl) {
       let type=types[0];
       if(roll>weights[0]+weights[1]) type=types[2];
       else if(roll>weights[0]) type=types[1];
-      if(r.type==='boss'&&s===0) {
-        if(lvl===5) type='lich';
+      if(r.type==='boss') {
+        if(lvl===5) type=(s===0?'lich':'wither');
         else if(lvl===4) type='bone_lord';
         else if(lvl===3) type='wither';
         else if(lvl===2) type='zombie_king';
+        else if(lvl===1) type='zombie_king';
       }
       r.spawns.push({x:ex*TILE+TILE/2,y:ey*TILE+TILE/2,type,diff,isBoss:r.type==='boss'});
     }
@@ -902,7 +918,7 @@ function makePlayer(sx,sy) {
   return {
     x:sx,y:sy,vx:0,vy:0,
     w:24,h:24,
-    hp:100,maxHp:100,
+    hp:150,maxHp:150,
     armorItem:null,   // equipped armor piece {name,defense,color,sprite,tier}
     alive:true, flashT:0,
     aimAngle:0,
@@ -935,6 +951,7 @@ function spawnEnemies() {
     for(const s of (r.spawns||[])) {
       const e=makeEnemy(s.type, s.x, s.y, s.diff);
       e.isBoss=s.isBoss||false;
+      e.roomType=r.type;
       enemies.push(e);
     }
   }
@@ -1095,6 +1112,7 @@ function killEnemy(e) {
   // Boss enemies always drop a health potion + a bonus loot
   if(e.isBoss) {
     lootItems.push(makeLoot(e.x,e.y,'health'));
+    if(rng()<0.4) lootItems.push(makeLoot(e.x+32,e.y,'golden_apple'));
   }
   // loot drop — armor only
   const roll=rng();
@@ -1324,7 +1342,21 @@ function collectLoot(item) {
     spawnParticles(item.x,item.y,14,['#cc2222','#ff5544','#ffaa44'],80,220,0.6,4);
     playSound(180,'sawtooth',0.1,80,0.2); playSound(280,'sawtooth',0.15,120,0.2);
   } else if(item.type==='health') {
-    player.hp=Math.min(player.maxHp, player.hp+30);
+    player.hp=player.maxHp;
+    spawnParticles(item.x,item.y,12,['#ff4444','#ff8888','#ffffff'],60,160,0.6,3);
+    playSound(440,'sine',0.2,200,0.3);
+  } else if(item.type==='golden_apple') {
+    if(player.hp>=75) {
+      player.maxHp=Math.min(200, player.maxHp+50);
+      player.hp=player.maxHp;
+      spawnParticles(item.x,item.y,20,['#ffd700','#ffee88','#ffffff','#ffaa00'],80,220,0.8,5);
+      dmgNumbers.push({x:item.x,y:item.y-20,val:'MAX HP +50!',life:1.5,vy:-50,color:'#ffd700',big:true});
+      playSound(880,'sine',0.3,500,0.5);
+    } else {
+      player.hp=player.maxHp;
+      spawnParticles(item.x,item.y,12,['#ffd700','#ffee88'],60,160,0.6,4);
+      playSound(660,'sine',0.25,300,0.4);
+    }
   } else if(item.type==='armor') {
     const cur=player.armorItem;
     if(!cur || item.weapon.tier > cur.tier) {
@@ -1479,10 +1511,9 @@ function updatePlayer(dt) {
     }
   }
 
-  // Auto-advance when all boss enemies are dead
-  const bossEnemiesLeft=enemies.filter(e=>e.isBoss).length;
-  const bossRoomSpawns=map.rooms.filter(r=>r.type==='boss').reduce((n,r)=>n+(r.spawns||[]).length,0);
-  if(bossRoomSpawns>0 && bossEnemiesLeft===0 && !transitioning) {
+  // Auto-advance when all enemies in the boss/stair room are defeated
+  const bossRoomEnemies=enemies.filter(e=>e.roomType==='boss');
+  if(!transitioning&&gameRunning&&bossRoomEnemies.length>0&&bossRoomEnemies.every(e=>!e.alive)) {
     startTransition();
   }
 
@@ -1625,6 +1656,7 @@ function renderLoot() {
       : item.type==='health'?'loot_health'
       : item.type==='armor'?(item.weapon&&item.weapon.sprite?item.weapon.sprite:'armor_leather')
       : item.type==='coin'?'loot_coin'
+      : item.type==='golden_apple'?'loot_golden_apple'
       : item.type==='bow'?'loot_bow'
       : item.weapon&&item.weapon.sprite?item.weapon.sprite
       : 'loot_sword';
