@@ -40,6 +40,19 @@
   #overlay.hidden { display: none; }
   #deathMsg { font-size: 16px; color: #ff4444; margin-bottom: 10px; }
   #winMsg   { font-size: 16px; color: #ffd700; margin-bottom: 10px; }
+  #difficulty-select { display: flex; gap: 8px; margin: 10px 0 4px; }
+  .diff-btn {
+    flex: 1; padding: 8px 0; font-family: 'Courier New', monospace; font-size: 13px;
+    border: 2px solid #555; background: #111; color: #aaa; cursor: pointer; letter-spacing: 1px;
+    transition: all 0.15s;
+  }
+  .diff-btn:hover { border-color: #888; color: #fff; }
+  .diff-btn.active-easy    { border-color: #44cc44; background: #0a200a; color: #44ff44; }
+  .diff-btn.active-adventure { border-color: #ffcc44; background: #201a00; color: #ffcc44; }
+  .diff-btn.active-hardcore    { border-color: #ff4444; background: #200000; color: #ff6666; }
+  .diff-btn.active-impossible      { border-color: #ff00ff; background: #1a001a; color: #ff44ff; }
+  .diff-btn.active-super_apocalypse{ border-color: #ff6600; background: #1a0800; color: #ff9933; text-shadow: 0 0 8px #ff6600; }
+  .diff-btn.active-unknown { border-color: #ffffff; background: #050505; color: #fff; letter-spacing: 4px; text-shadow: 0 0 10px #fff, 0 0 20px #aaaaff; }
 
   /* On-screen controls */
   #onscreen-controls {
@@ -177,6 +190,14 @@
         <div class="profile-bar-fill" id="pfill2" style="background:#ffaa22;width:0%"></div>
         <div class="profile-info"><span class="profile-name">SLOT 3</span><span class="profile-stats" id="pstats2">BEATEN: 0&nbsp;&nbsp;BEST: --:--<br>RUNS: 0</span></div>
       </div>
+    </div>
+    <div id="difficulty-select">
+      <button class="diff-btn" id="diff-easy"      onclick="window.setDifficulty('easy')">EASY</button>
+      <button class="diff-btn active-adventure" id="diff-adventure" onclick="window.setDifficulty('adventure')">ADVENTURE</button>
+      <button class="diff-btn" id="diff-hardcore"    onclick="window.setDifficulty('hardcore')">HARDCORE</button>
+      <button class="diff-btn" id="diff-impossible"       onclick="window.setDifficulty('impossible')">IMPOSSIBLE</button>
+      <button class="diff-btn" id="diff-super_apocalypse" onclick="window.setDifficulty('super_apocalypse')">SUPER APOCALYPSE</button>
+      <button class="diff-btn" id="diff-unknown"          onclick="window.setDifficulty('unknown')">???</button>
     </div>
     <p id="deathMsg"></p>
     <p id="winMsg"></p>
@@ -822,7 +843,12 @@ function generateLevel(lvl) {
     const r=map.rooms[i];
     if(r.type==='start') continue;
     const count = r.type==='boss'
-      ? (lvl===cfg.maxLevels ? 2 : 1)  // level 5: two bosses; other levels: one boss
+      ? (difficulty==='easy'             ? 1
+       : difficulty==='hardcore'         ? (lvl===5?4:3)
+       : difficulty==='impossible'       ? (lvl===5?6:5)
+       : difficulty==='super_apocalypse' ? (lvl===5?15:10)
+       : difficulty==='unknown'          ? (lvl===5?25:20)
+       : (lvl===5?2:1))                  // adventure default
       : r.type==='treasure'
         ? 0
         : rndInt(1, 1+Math.floor(lvl*0.6));       // regular: 1-2 on lvl1, 1-4 on lvl5
@@ -836,14 +862,18 @@ function generateLevel(lvl) {
       let type=types[0];
       if(roll>weights[0]+weights[1]) type=types[2];
       else if(roll>weights[0]) type=types[1];
-      if(r.type==='boss') {
-        if(lvl===5) type=(s===0?'lich':'wither');
-        else if(lvl===4) type='bone_lord';
-        else if(lvl===3) type='wither';
-        else if(lvl===2) type='zombie_king';
-        else if(lvl===1) type='zombie_king';
+      // Which levels have actual boss enemies
+      const easyBossLvls=[3,5];
+      const isActualBoss = r.type==='boss' && (difficulty!=='easy' || easyBossLvls.includes(lvl));
+      if(r.type==='boss' && isActualBoss) {
+        const bossRota=['lich','wither','bone_lord','zombie_king','wither','zombie_king'];
+        if(lvl===5) type=bossRota[s%bossRota.length];
+        else if(lvl===4) type=['bone_lord','wither','zombie_king','bone_lord','wither'][s]||'bone_lord';
+        else if(lvl===3) type=['wither','zombie_king','bone_lord','wither','zombie_king'][s]||'wither';
+        else if(lvl===2) type=['zombie_king','wither','bone_lord','zombie_king','wither'][s]||'zombie_king';
+        else if(lvl===1) type=['zombie_king','zombie_king','wither','zombie_king','wither'][s]||'zombie_king';
       }
-      r.spawns.push({x:ex*TILE+TILE/2,y:ey*TILE+TILE/2,type,diff,isBoss:r.type==='boss'});
+      r.spawns.push({x:ex*TILE+TILE/2,y:ey*TILE+TILE/2,type,diff,isBoss:isActualBoss});
     }
   }
   // Treasure room loot
@@ -1111,6 +1141,10 @@ function killEnemy(e) {
   SFX.die();
   // Boss enemies always drop a health potion + a bonus loot
   if(e.isBoss) {
+    // Heal player 50 HP on boss kill
+    player.hp=Math.min(player.maxHp, player.hp+50);
+    spawnParticles(player.x,player.y,16,['#ff4444','#ff8888','#ffffff'],60,160,0.6,4);
+    dmgNumbers.push({x:player.x,y:player.y-28,val:'+50 HP',life:1.2,vy:-55,color:'#ff6666',big:true});
     lootItems.push(makeLoot(e.x,e.y,'health'));
     if(rng()<0.4) lootItems.push(makeLoot(e.x+32,e.y,'golden_apple'));
   }
@@ -1525,6 +1559,7 @@ function updatePlayer(dt) {
         r.cleared=true;
         const aTier=Math.min(4,dungeonLevel+1);
         lootItems.push(makeLoot(r.lootSpot.x,r.lootSpot.y,'armor',ARMOR_DEFS[aTier-1]));
+        lootItems.push(makeLoot(r.lootSpot.x+36,r.lootSpot.y,'golden_apple'));
         SFX.door();
       }
     }
@@ -2282,6 +2317,15 @@ function startGame() {
   showCutscene(INTRO_SLIDES, ()=>{ launchGame(); });
 }
 window.startGame=startGame;
+let difficulty='adventure';
+function setDifficulty(d){
+  difficulty=d;
+  ['easy','adventure','hardcore','impossible','super_apocalypse','unknown'].forEach(k=>{
+    const el=document.getElementById('diff-'+k);
+    if(el){ el.className='diff-btn'+(d===k?' active-'+k:''); }
+  });
+}
+window.setDifficulty=setDifficulty;
 window.selectProfile=selectProfile;
 
 // === PROFILES ===
