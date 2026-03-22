@@ -851,7 +851,7 @@ function generateLevel(lvl) {
        : difficulty==='impossible'       ? (lvl===5?6:5)
        : difficulty==='super_apocalypse' ? (lvl===5?15:10)
        : difficulty==='unknown'          ? (lvl===5?50:35)
-       : difficulty==='chaos'           ? (lvl===5?100:75)
+       : difficulty==='chaos'           ? (lvl===5?500:200)
        : (lvl===5?2:1))                  // adventure default
       : r.type==='treasure'
         ? 0
