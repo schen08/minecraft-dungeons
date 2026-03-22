@@ -94,7 +94,7 @@
   }
   .oc-bow:active, .oc-bow.pressed { background: rgba(100,180,255,0.75); }
   .oc-heal {
-    position: absolute; bottom: 112px; left: 36px;
+    position: absolute; bottom: 200px; right: 36px;
     width: 56px; height: 56px;
     border-radius: 50%;
     background: rgba(30,180,80,0.55);
@@ -112,7 +112,7 @@
     transition: none;
   }
   .oc-bomb {
-    position: absolute; bottom: 28px; left: 28px;
+    position: absolute; bottom: 264px; right: 36px;
     width: 56px; height: 56px;
     border-radius: 50%;
     background: rgba(180,100,20,0.6);
@@ -525,6 +525,56 @@ makeSprite('loot_axe', 20, 20, (c)=>{
 });
 
 // Boss sprites
+// Zombie King boss sprite (level 2)
+makeSprite('zombie_king', 40, 40, (c)=>{
+  const d=(col,x,y,s=1)=>{c.fillStyle=col;c.fillRect(x*2,y*2,s*2,s*2);};
+  c.fillStyle='rgba(0,0,0,0.3)'; c.fillRect(4,35,32,5);
+  // Body (big green)
+  for(let x=3;x<=16;x++) for(let y=8;y<=17;y++) d('#336633',x,y);
+  // Belly rot patch
+  for(let x=6;x<=13;x++) for(let y=11;y<=15;y++) d('#224422',x,y);
+  // Head
+  for(let x=5;x<=14;x++) for(let y=2;y<=7;y++) d('#44884',x,y);
+  for(let x=5;x<=14;x++) for(let y=2;y<=7;y++) d('#448844',x,y);
+  // Crown
+  d('#ffd700',5,1);d('#ffd700',6,0);d('#ffd700',9,0);d('#ffd700',10,0);d('#ffd700',13,0);d('#ffd700',14,1);
+  // Eyes (yellow glowing)
+  d('#ffee00',6,4);d('#ffee00',7,4);d('#ffee00',12,4);d('#ffee00',13,4);
+  // Mouth (jagged)
+  d('#111111',7,6);d('#111111',9,6);d('#111111',11,6);d('#111111',13,6);
+  // Arms
+  for(let y=9;y<=13;y++){d('#336633',1,y);d('#336633',2,y);d('#336633',17,y);d('#336633',18,y);}
+  // Legs
+  for(let y=17;y<=19;y++){d('#224422',4,y);d('#224422',5,y);d('#224422',13,y);d('#224422',14,y);}
+});
+
+// Bone Lord boss sprite (level 4)
+makeSprite('bone_lord', 40, 40, (c)=>{
+  const d=(col,x,y,s=1)=>{c.fillStyle=col;c.fillRect(x*2,y*2,s*2,s*2);};
+  c.fillStyle='rgba(0,0,0,0.3)'; c.fillRect(4,35,32,5);
+  // Robe (dark purple)
+  for(let x=4;x<=15;x++) for(let y=9;y<=18;y++) d('#441166',x,y);
+  for(let x=6;x<=13;x++) for(let y=9;y<=18;y++) d('#551188',x,y);
+  // Skull head
+  for(let x=5;x<=14;x++) for(let y=2;y<=8;y++) d('#eeeecc',x,y);
+  // Eye sockets (black)
+  d('#111111',6,4);d('#111111',7,4);d('#111111',6,5);d('#111111',7,5);
+  d('#111111',12,4);d('#111111',13,4);d('#111111',12,5);d('#111111',13,5);
+  // Nose
+  d('#ccccaa',9,6);d('#ccccaa',10,6);
+  // Teeth
+  d('#ffffff',7,7);d('#ffffff',9,7);d('#ffffff',11,7);d('#ffffff',13,7);
+  // Bone staff
+  for(let y=5;y<=18;y++) d('#ccccaa',18,y);
+  d('#eeeecc',17,5);d('#eeeecc',19,5);d('#eeeecc',17,6);d('#eeeecc',19,6);
+  // Floating orb on staff
+  for(let x=16;x<=20;x++) for(let y=2;y<=4;y++) d('#aa44ff',x,y);
+  d('#cc88ff',17,3);d('#cc88ff',18,2);
+  // Bone arms
+  for(let y=10;y<=13;y++) d('#ccccaa',2,y);
+  d('#bbbb99',1,10);d('#bbbb99',3,13);
+});
+
 // Wither King boss sprite (dark armored brute)
 makeSprite('wither', 40, 40, (c)=>{
   const d=(col,x,y,s=1)=>{c.fillStyle=col;c.fillRect(x*2,y*2,s*2,s*2);};
@@ -771,8 +821,12 @@ function generateLevel(lvl) {
       let type=types[0];
       if(roll>weights[0]+weights[1]) type=types[2];
       else if(roll>weights[0]) type=types[1];
-      if(r.type==='boss'&&lvl===cfg.maxLevels&&s===0) type='lich';
-      else if(r.type==='boss'&&lvl===3&&s===0) type='wither';
+      if(r.type==='boss'&&s===0) {
+        if(lvl===5) type='lich';
+        else if(lvl===4) type='bone_lord';
+        else if(lvl===3) type='wither';
+        else if(lvl===2) type='zombie_king';
+      }
       r.spawns.push({x:ex*TILE+TILE/2,y:ey*TILE+TILE/2,type,diff,isBoss:r.type==='boss'});
     }
   }
@@ -796,8 +850,10 @@ const ENEMY_DEFS = {
   zombie:  {hp:40, dmg:8,  spd:60,  aggro:180, attkR:40, color:'#4a9a4a', xp:10, sprite:'zombie'},
   skeleton:{hp:25, dmg:12, spd:90,  aggro:250, attkR:200,color:'#ddddcc', xp:15, sprite:'skeleton', ranged:true},
   spider:  {hp:20, dmg:6,  spd:130, aggro:160, attkR:36, color:'#7733aa', xp:8,  sprite:'spider'},
-  lich:    {hp:140,dmg:15, spd:50,  aggro:400, attkR:250,color:'#aa44ff', xp:200,sprite:'lich',   ranged:true, boss:true},
-  wither:  {hp:220,dmg:22, spd:80,  aggro:350, attkR:48, color:'#334455', xp:150,sprite:'wither',             boss:true},
+  lich:       {hp:140,dmg:15, spd:50,  aggro:400, attkR:250,color:'#aa44ff', xp:200,sprite:'lich',        ranged:true, boss:true},
+  wither:     {hp:220,dmg:22, spd:80,  aggro:350, attkR:48, color:'#334455', xp:150,sprite:'wither',                    boss:true},
+  zombie_king:{hp:160,dmg:18, spd:65,  aggro:280, attkR:52, color:'#336633', xp:120,sprite:'zombie_king',               boss:true},
+  bone_lord:  {hp:190,dmg:20, spd:60,  aggro:380, attkR:240,color:'#9966cc', xp:160,sprite:'bone_lord',  ranged:true,   boss:true},
 };
 
 let player={};
@@ -853,7 +909,7 @@ function makePlayer(sx,sy) {
     hasBow:true,
     weapon:{name:'Sword',type:'melee',dmg:5,spd:5,color:'#2266ff'},
     swordDmg:15,
-    bowDmg:20,
+    bowDmg:75,
     score:0,
   };
 }
