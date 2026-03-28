@@ -59,6 +59,8 @@
   @keyframes chaosFlash { from { color:#ff0000; border-color:#ff0000; } to { color:#ffaa00; border-color:#ffaa00; } }
   .diff-btn.active-oblivion { border-color: #ff00ff; background: #0a000a; color: #ff00ff; letter-spacing: 3px; text-shadow: 0 0 8px #ff00ff, 0 0 20px #ff44ff, 0 0 40px #cc00cc, 0 0 60px #ff00ff; animation: oblivionFlash 0.25s infinite alternate; }
   @keyframes oblivionFlash { from { color:#ff00ff; border-color:#ff00ff; box-shadow:0 0 10px #ff00ff; } to { color:#ffffff; border-color:#ffffff; box-shadow:0 0 30px #ffffff; } }
+  .diff-btn.active-godmode  { border-color: #ffff00; background: #0a0a00; color: #ffff00; letter-spacing: 4px; text-shadow: 0 0 10px #ffff00, 0 0 25px #ffffff, 0 0 50px #ffff00, 0 0 80px #ffaa00; animation: godFlash 0.15s infinite alternate; }
+  @keyframes godFlash { from { color:#ffff00; border-color:#ffff00; box-shadow:0 0 15px #ffff00; } to { color:#ffffff; border-color:#ffffff; box-shadow:0 0 50px #ffffff, 0 0 80px #ffff00; } }
 
   /* On-screen controls */
   #onscreen-controls {
@@ -207,6 +209,7 @@
       <button class="diff-btn" id="diff-unknown"          onclick="window.setDifficulty('unknown')">???</button>
       <button class="diff-btn" id="diff-chaos"            onclick="window.setDifficulty('chaos')">?!?!</button>
       <button class="diff-btn" id="diff-oblivion"         onclick="window.setDifficulty('oblivion')">?!!!</button>
+      <button class="diff-btn" id="diff-godmode"          onclick="window.setDifficulty('godmode')">!!!!</button>
     </div>
     <p id="deathMsg"></p>
     <p id="winMsg"></p>
@@ -860,6 +863,7 @@ function generateLevel(lvl) {
        : difficulty==='unknown'          ? (lvl===5?50:35)
        : difficulty==='chaos'           ? (lvl===5?500:200)
        : difficulty==='oblivion'        ? (lvl===5?2500:1000)
+       : difficulty==='godmode'         ? (lvl===5?1000000:10000)
        : (lvl===5?2:1))                  // adventure default
       : r.type==='treasure'
         ? 0
@@ -2332,7 +2336,7 @@ window.startGame=startGame;
 let difficulty='adventure';
 function setDifficulty(d){
   difficulty=d;
-  ['easy','adventure','hardcore','impossible','chaos_q','super_apocalypse','unknown','chaos','oblivion'].forEach(k=>{
+  ['easy','adventure','hardcore','impossible','chaos_q','super_apocalypse','unknown','chaos','oblivion','godmode'].forEach(k=>{
     const el=document.getElementById('diff-'+k);
     if(el){ el.className='diff-btn'+(d===k?' active-'+k:''); }
   });
