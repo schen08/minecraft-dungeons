@@ -40,7 +40,7 @@
   #overlay.hidden { display: none; }
   #deathMsg { font-size: 16px; color: #ff4444; margin-bottom: 10px; }
   #winMsg   { font-size: 16px; color: #ffd700; margin-bottom: 10px; }
-  #difficulty-select { display: flex; gap: 8px; margin: 10px 0 4px; }
+  #difficulty-select { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; justify-content: center; }
   .diff-btn {
     flex: 1; padding: 8px 0; font-family: 'Courier New', monospace; font-size: 13px;
     border: 2px solid #555; background: #111; color: #aaa; cursor: pointer; letter-spacing: 1px;
@@ -51,10 +51,14 @@
   .diff-btn.active-adventure { border-color: #ffcc44; background: #201a00; color: #ffcc44; }
   .diff-btn.active-hardcore    { border-color: #ff4444; background: #200000; color: #ff6666; }
   .diff-btn.active-impossible      { border-color: #ff00ff; background: #1a001a; color: #ff44ff; }
+  .diff-btn.active-chaos_q  { border-color: #ff3300; background: #150500; color: #ff6622; text-shadow: 0 0 6px #ff3300, 0 0 14px #ff6600; animation: chaosQFlash 0.5s infinite alternate; }
+  @keyframes chaosQFlash { from { color:#ff3300; border-color:#ff3300; } to { color:#ffaa44; border-color:#ff6600; } }
   .diff-btn.active-super_apocalypse{ border-color: #ff6600; background: #1a0800; color: #ff9933; text-shadow: 0 0 8px #ff6600; }
   .diff-btn.active-unknown  { border-color: #ffffff; background: #050505; color: #fff; letter-spacing: 4px; text-shadow: 0 0 10px #fff, 0 0 20px #aaaaff; }
   .diff-btn.active-chaos    { border-color: #ff0000; background: #0a0000; color: #ff0000; letter-spacing: 2px; text-shadow: 0 0 6px #ff0000, 0 0 16px #ff4400, 0 0 30px #ff0000; animation: chaosFlash 0.4s infinite alternate; }
   @keyframes chaosFlash { from { color:#ff0000; border-color:#ff0000; } to { color:#ffaa00; border-color:#ffaa00; } }
+  .diff-btn.active-oblivion { border-color: #ff00ff; background: #0a000a; color: #ff00ff; letter-spacing: 3px; text-shadow: 0 0 8px #ff00ff, 0 0 20px #ff44ff, 0 0 40px #cc00cc, 0 0 60px #ff00ff; animation: oblivionFlash 0.25s infinite alternate; }
+  @keyframes oblivionFlash { from { color:#ff00ff; border-color:#ff00ff; box-shadow:0 0 10px #ff00ff; } to { color:#ffffff; border-color:#ffffff; box-shadow:0 0 30px #ffffff; } }
 
   /* On-screen controls */
   #onscreen-controls {
@@ -198,9 +202,11 @@
       <button class="diff-btn active-adventure" id="diff-adventure" onclick="window.setDifficulty('adventure')">ADVENTURE</button>
       <button class="diff-btn" id="diff-hardcore"    onclick="window.setDifficulty('hardcore')">HARDCORE</button>
       <button class="diff-btn" id="diff-impossible"       onclick="window.setDifficulty('impossible')">IMPOSSIBLE</button>
+      <button class="diff-btn" id="diff-chaos_q"          onclick="window.setDifficulty('chaos_q')">CHAOS?</button>
       <button class="diff-btn" id="diff-super_apocalypse" onclick="window.setDifficulty('super_apocalypse')">SUPER APOCALYPSE</button>
       <button class="diff-btn" id="diff-unknown"          onclick="window.setDifficulty('unknown')">???</button>
       <button class="diff-btn" id="diff-chaos"            onclick="window.setDifficulty('chaos')">?!?!</button>
+      <button class="diff-btn" id="diff-oblivion"         onclick="window.setDifficulty('oblivion')">?!!!</button>
     </div>
     <p id="deathMsg"></p>
     <p id="winMsg"></p>
@@ -849,9 +855,11 @@ function generateLevel(lvl) {
       ? (difficulty==='easy'             ? 1
        : difficulty==='hardcore'         ? (lvl===5?4:3)
        : difficulty==='impossible'       ? (lvl===5?6:5)
+       : difficulty==='chaos_q'          ? (lvl===5?12:8)
        : difficulty==='super_apocalypse' ? (lvl===5?15:10)
        : difficulty==='unknown'          ? (lvl===5?50:35)
        : difficulty==='chaos'           ? (lvl===5?500:200)
+       : difficulty==='oblivion'        ? (lvl===5?2500:1000)
        : (lvl===5?2:1))                  // adventure default
       : r.type==='treasure'
         ? 0
@@ -2324,7 +2332,7 @@ window.startGame=startGame;
 let difficulty='adventure';
 function setDifficulty(d){
   difficulty=d;
-  ['easy','adventure','hardcore','impossible','super_apocalypse','unknown','chaos'].forEach(k=>{
+  ['easy','adventure','hardcore','impossible','chaos_q','super_apocalypse','unknown','chaos','oblivion'].forEach(k=>{
     const el=document.getElementById('diff-'+k);
     if(el){ el.className='diff-btn'+(d===k?' active-'+k:''); }
   });
