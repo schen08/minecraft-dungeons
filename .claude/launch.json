@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "minecraft-dungeons",
+      "name": "ducky-dungeons",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "-p", "5500", "."],
-      "port": 5500
+      "runtimeArgs": ["serve", "-p", "5501", "."],
+      "port": 5501
     }
   ]
 }

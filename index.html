@@ -40,11 +40,11 @@
   #overlay.hidden { display: none; }
   #deathMsg { font-size: 16px; color: #ff4444; margin-bottom: 10px; }
   #winMsg   { font-size: 16px; color: #ffd700; margin-bottom: 10px; }
-  #difficulty-select { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; justify-content: center; }
+  #difficulty-select { display: flex; flex-wrap: nowrap; gap: 4px; margin: 10px 0 4px; justify-content: center; }
   .diff-btn {
-    flex: 1; padding: 8px 0; font-family: 'Courier New', monospace; font-size: 13px;
-    border: 2px solid #555; background: #111; color: #aaa; cursor: pointer; letter-spacing: 1px;
-    transition: all 0.15s;
+    flex: 1; padding: 8px 4px; font-family: 'Courier New', monospace; font-size: 11px;
+    border: 2px solid #555; background: #111; color: #aaa; cursor: pointer; letter-spacing: 0;
+    transition: all 0.15s; white-space: nowrap;
   }
   .diff-btn:hover { border-color: #888; color: #fff; }
   .diff-btn.active-easy    { border-color: #44cc44; background: #0a200a; color: #44ff44; }
@@ -863,7 +863,7 @@ function generateLevel(lvl) {
        : difficulty==='unknown'          ? (lvl===5?50:35)
        : difficulty==='chaos'           ? (lvl===5?500:200)
        : difficulty==='oblivion'        ? (lvl===5?2500:1000)
-       : difficulty==='godmode'         ? (lvl===5?1000000:10000)
+       : difficulty==='godmode'         ? (lvl===5?7500:2500)
        : (lvl===5?2:1))                  // adventure default
       : r.type==='treasure'
         ? 0
