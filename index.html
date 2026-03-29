@@ -47,6 +47,8 @@
     transition: all 0.15s; white-space: nowrap;
   }
   .diff-btn:hover { border-color: #888; color: #fff; }
+  .diff-btn.locked { border-color: #333; background: #0a0a0a; color: #444; cursor: not-allowed; opacity: 0.5; }
+  .diff-btn.locked:hover { border-color: #333; color: #444; }
   .diff-btn.active-easy    { border-color: #44cc44; background: #0a200a; color: #44ff44; }
   .diff-btn.active-adventure { border-color: #ffcc44; background: #201a00; color: #ffcc44; }
   .diff-btn.active-hardcore    { border-color: #ff4444; background: #200000; color: #ff6666; }
@@ -650,14 +652,21 @@ makeSprite('wither', 40, 40, (c)=>{
 });
 
 makeSprite('lich', 40, 40, (c)=>{
-  const d=(col,x,y,s=2)=>{c.fillStyle=col;c.fillRect(x*2,y*2,s*2,s*2);};
-  c.fillStyle='rgba(0,0,0,0.3)'; c.fillRect(5,35,30,5);
-  for(let x=4;x<=15;x++) for(let y=6;y<=14;y++) d('#7733aa',x,y,1);
-  for(let x=6;x<=13;x++) for(let y=2;y<=5;y++) d('#9944cc',x,y,1);
-  d('#ff00ff',6,3,1);d('#ff00ff',7,3,1);d('#ff00ff',12,3,1);d('#ff00ff',13,3,1);
-  d('#9944cc',3,8,1);d('#9944cc',3,9,1);d('#9944cc',16,8,1);d('#9944cc',16,9,1);
-  d('#cc44ff',3,6,1);d('#3300aa',4,14,1);d('#3300aa',14,14,1);
-  d('#cc44ff',5,7,1);d('#cc44ff',14,7,1);
+  // Shadow
+  c.fillStyle='rgba(0,0,0,0.3)'; c.fillRect(4,36,32,4);
+  // Main body — one big yellow ball filling most of the sprite
+  c.fillStyle='#ffdd00';
+  c.beginPath(); c.arc(20,21,11,0,Math.PI*2); c.fill();
+  // Shiny highlight — makes it look round/bally
+  c.fillStyle='rgba(255,255,200,0.45)';
+  c.beginPath(); c.arc(14,13,6,0,Math.PI*2); c.fill();
+  // Eyes — black dots
+  c.fillStyle='#111111';
+  c.beginPath(); c.arc(16,11,2.5,0,Math.PI*2); c.fill();
+  c.beginPath(); c.arc(24,11,2.5,0,Math.PI*2); c.fill();
+  // Beak — orange-red triangle in the center of the body
+  c.fillStyle='#ff5500';
+  c.beginPath(); c.moveTo(17,25); c.lineTo(23,25); c.lineTo(20,17); c.closePath(); c.fill();
 });
 
 // === INPUT ===
@@ -2348,7 +2357,7 @@ window.selectProfile=selectProfile;
 let runStartTime=0;
 let activeProfile=parseInt(localStorage.getItem('mcDungActiveProfile')||'0');
 function profileKey(i){ return 'mcDungStats_'+i; }
-function loadProfile(i){ return JSON.parse(localStorage.getItem(profileKey(i))||'{"wins":0,"bestTime":0,"runs":0}'); }
+function loadProfile(i){ const d=JSON.parse(localStorage.getItem(profileKey(i))||'{"wins":0,"bestTime":0,"runs":0}'); if(!d.diffWins) d.diffWins={}; return d; }
 function saveProfile(i,s){ localStorage.setItem(profileKey(i),JSON.stringify(s)); }
 function fmtTime(sec){
   if(!sec) return '--:--';
