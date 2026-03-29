@@ -2421,6 +2421,7 @@ function endGame(win) {
     s.wins++;
     const elapsed=performance.now()/1000-runStartTime;
     if(!s.bestTime||elapsed<s.bestTime) s.bestTime=Math.round(elapsed);
+    s.diffWins[difficulty]=(s.diffWins[difficulty]||0)+1;
   }
   saveProfile(activeProfile,s);
   updateProfilesUI();
