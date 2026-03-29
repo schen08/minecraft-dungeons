@@ -157,10 +157,44 @@
     pointer-events: none; z-index: 2;
     transition: none;
   }
+  #secret-bar {
+    position: fixed; top: 0; left: 0; width: 100%; z-index: 9999;
+    background: #111; border-bottom: 2px solid #333;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Courier New', monospace; font-size: 12px;
+    color: #555; cursor: pointer; height: 24px; letter-spacing: 2px;
+    user-select: none;
+  }
+  #secret-bar:hover { color: #888; border-bottom-color: #555; }
+  #secret-input-bar {
+    display: none; position: fixed; top: 24px; left: 0; width: 100%; z-index: 9998;
+    background: #0a0a0a; border-bottom: 2px solid #333;
+    padding: 6px; text-align: center;
+  }
+  #secret-input {
+    background: #000; border: 1px solid #444; color: #aaa;
+    font-family: 'Courier New', monospace; font-size: 13px;
+    padding: 4px 10px; width: 200px; letter-spacing: 3px; text-align: center;
+    outline: none;
+  }
+  #secret-msg { font-family: 'Courier New', monospace; font-size: 12px; color: #555; margin-left: 10px; }
+  #admin-cancel {
+    display: none; position: absolute; top: 8px; left: calc(50% + 30px);
+    z-index: 999; background: #330000; border: 1px solid #ff4444; color: #ff4444;
+    font-family: 'Courier New', monospace; font-size: 11px; cursor: pointer;
+    padding: 2px 6px; letter-spacing: 1px;
+  }
+  #admin-cancel:hover { background: #550000; color: #ff6666; }
 </style>
 </head>
 <body>
+<div id="secret-bar" onclick="toggleSecretInput()">SECRET CODE</div>
+<div id="secret-input-bar">
+  <input id="secret-input" type="password" maxlength="20" placeholder="enter code..." oninput="checkSecretCode(this.value)" />
+  <span id="secret-msg"></span>
+</div>
 <div id="wrap">
+<button id="admin-cancel" onclick="window.deactivateAdmin()">✕ ADMIN</button>
   <canvas id="game"></canvas>
   <div id="onscreen-controls">
     <div class="oc-dpad">
@@ -667,6 +701,10 @@ makeSprite('lich', 40, 40, (c)=>{
   // Beak — orange-red triangle in the center of the body
   c.fillStyle='#ff5500';
   c.beginPath(); c.moveTo(17,25); c.lineTo(23,25); c.lineTo(20,17); c.closePath(); c.fill();
+  // Wings — left and right at body midline
+  c.fillStyle='#ffdd00';
+  c.beginPath(); c.moveTo(9,17); c.lineTo(2,21); c.lineTo(9,25); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(31,17); c.lineTo(38,21); c.lineTo(31,25); c.closePath(); c.fill();
 });
 
 // === INPUT ===
@@ -1445,6 +1483,7 @@ function updatePlayer(dt) {
   bowTimer=Math.max(0,bowTimer-dt);
   meleeFlash=Math.max(0,meleeFlash-dt);
   swiftTimer=Math.max(0,swiftTimer-dt);
+  if(adminTimer>0){ adminTimer=Math.max(0,adminTimer-dt); if(adminTimer<=0){ window.secretCodeActive=false; document.getElementById('admin-cancel').style.display='none'; } }
   if(spinTimer>0) {
     spinTimer=Math.max(0,spinTimer-dt);
     spinAngle+=Math.PI*8*dt;  // fast full spin
@@ -1916,6 +1955,12 @@ function renderHUD() {
   // Level
   ctx.fillStyle='#aaddff'; ctx.font='bold 12px monospace';
   ctx.fillText('DUNGEON '+dungeonLevel+'/'+cfg.maxLevels, CW/2-50, 38);
+  // Admin timer HUD
+  if(adminTimer>0){
+    const am=Math.floor(adminTimer/60), as=Math.floor(adminTimer%60);
+    ctx.fillStyle='#ffdd00'; ctx.font='bold 11px monospace';
+    ctx.fillText('★ ADMIN: '+(am>0?am+'m ':'')+(as+'s'), CW/2-50, 52);
+  }
   // Enemies remaining
   const bossLeft=enemies.filter(e=>e.isBoss).length;
   if(bossLeft>0) {
@@ -2344,14 +2389,69 @@ function startGame() {
 window.startGame=startGame;
 let difficulty='adventure';
 function setDifficulty(d){
+  const s=loadProfile(activeProfile);
+  const tier2=['impossible','chaos_q','super_apocalypse'];
+  const tier3=['unknown','chaos','oblivion','godmode'];
+  if(tier2.includes(d)&&!(s.diffWins['hardcore']>0)) return;
+  if(tier3.includes(d)&&!(s.diffWins['super_apocalypse']>0)) return;
   difficulty=d;
   ['easy','adventure','hardcore','impossible','chaos_q','super_apocalypse','unknown','chaos','oblivion','godmode'].forEach(k=>{
     const el=document.getElementById('diff-'+k);
     if(el){ el.className='diff-btn'+(d===k?' active-'+k:''); }
   });
+  updateDifficultyLocks();
 }
 window.setDifficulty=setDifficulty;
 window.selectProfile=selectProfile;
+// Secret code rewards (inside IIFE scope to access game vars)
+const ADMIN_DUR=300; // 5 minutes in seconds
+let adminTimer=0;
+function applySecretRewards(){
+  if(!window.secretCodeActive) return;
+  player.armorItem=ARMOR_DEFS[ARMOR_DEFS.length-1]; // Diamond Armor
+  swiftTimer=SWIFT_DUR;
+  strengthTimer=STRENGTH_DUR;
+  adminTimer=ADMIN_DUR;
+  document.getElementById('admin-cancel').style.display='block';
+}
+window.applySecretRewards=applySecretRewards;
+window.deactivateAdmin=function(){
+  window.secretCodeActive=false;
+  adminTimer=0;
+  document.getElementById('admin-cancel').style.display='none';
+};
+
+// === SECRET CODE ===
+window.secretCodeActive=false;
+window.toggleSecretInput=function(){
+  const bar=document.getElementById('secret-input-bar');
+  const inp=document.getElementById('secret-input');
+  const showing=bar.style.display==='block';
+  bar.style.display=showing?'none':'block';
+  if(!showing){ inp.value=''; document.getElementById('secret-msg').textContent=''; inp.focus(); }
+};
+window.checkSecretCode=function(val){
+  const msg=document.getElementById('secret-msg');
+  if(val.toLowerCase()==='william'){
+    // Unlock all difficulties
+    const s=loadProfile(activeProfile);
+    s.diffWins['hardcore']=(s.diffWins['hardcore']||0)||1;
+    s.diffWins['super_apocalypse']=(s.diffWins['super_apocalypse']||0)||1;
+    saveProfile(activeProfile,s);
+    updateDifficultyLocks();
+    // Mark secret active and apply rewards if in-game
+    window.secretCodeActive=true;
+    if(gameRunning && window.applySecretRewards) window.applySecretRewards();
+    msg.style.color='#44ff44';
+    msg.textContent='✓ CODE ACCEPTED';
+    setTimeout(()=>{ document.getElementById('secret-input-bar').style.display='none'; },1200);
+  } else if(val.length>=7) {
+    msg.style.color='#ff4444';
+    msg.textContent='✗ WRONG CODE';
+  } else {
+    msg.textContent='';
+  }
+};
 
 // === PROFILES ===
 let runStartTime=0;
@@ -2364,6 +2464,29 @@ function fmtTime(sec){
   const m=Math.floor(sec/60),s=Math.floor(sec%60);
   return m+':'+(s<10?'0':'')+s;
 }
+function updateDifficultyLocks(){
+  const s=loadProfile(activeProfile);
+  const beatHardcore=(s.diffWins['hardcore']||0)>0;
+  const beatSuperApoc=(s.diffWins['super_apocalypse']||0)>0;
+  const tier2=['impossible','chaos_q','super_apocalypse'];
+  const tier3=['unknown','chaos','oblivion','godmode'];
+  tier2.forEach(k=>{
+    const el=document.getElementById('diff-'+k);
+    if(!el) return;
+    el.classList.toggle('locked',!beatHardcore);
+    el.disabled=!beatHardcore;
+  });
+  tier3.forEach(k=>{
+    const el=document.getElementById('diff-'+k);
+    if(!el) return;
+    el.classList.toggle('locked',!beatSuperApoc);
+    el.disabled=!beatSuperApoc;
+  });
+  // If current difficulty became locked, reset to adventure
+  if((tier2.includes(difficulty)&&!beatHardcore)||(tier3.includes(difficulty)&&!beatSuperApoc)){
+    setDifficulty('adventure');
+  }
+}
 function updateProfilesUI(){
   const colors=['#5dfc6e','#44aaff','#ffaa22'];
   for(let i=0;i<3;i++){
@@ -2374,6 +2497,7 @@ function updateProfilesUI(){
     document.getElementById('prof'+i).classList.toggle('active',i===activeProfile);
     document.getElementById('prof'+i).querySelector('.profile-name').textContent='SLOT '+(i+1);
   }
+  updateDifficultyLocks();
 }
 function selectProfile(i){
   activeProfile=i;
@@ -2407,6 +2531,7 @@ function launchGame() {
   attackTimer=0; bowTimer=0; swiftTimer=0; strengthTimer=0; noHitTimer=0; dmgNumbers=[]; spinTimer=0; spinAngle=0; teleportCd=0; hitCount=0; rollTimer=0; rollCd=0; healPotionCd=0; bombCd=0;
   gameRunning=true;
   gameState='playing';
+  if(window.applySecretRewards) window.applySecretRewards();
   startAmb(50);
 }
 
