@@ -222,9 +222,12 @@
     <p>Right Click — Shoot Arrow</p>
     <p>E — Pick up item</p>
     <div id="profiles">
-      <div class="profile-bar" id="prof0" onclick="window.selectProfile(0)">
-        <div class="profile-bar-fill" id="pfill0" style="background:#5dfc6e;width:0%"></div>
-        <div class="profile-info"><span class="profile-name">SLOT 1</span><span class="profile-stats" id="pstats0">BEATEN: 0&nbsp;&nbsp;BEST: --:--<br>RUNS: 0</span></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="profile-bar" id="prof0" onclick="window.selectProfile(0)" style="flex:1;margin:0;">
+          <div class="profile-bar-fill" id="pfill0" style="background:#5dfc6e;width:0%"></div>
+          <div class="profile-info"><span class="profile-name">SLOT 1</span><span class="profile-stats" id="pstats0">BEATEN: 0&nbsp;&nbsp;BEST: --:--<br>RUNS: 0</span></div>
+        </div>
+        <button onclick="window.clearAllData()" style="padding:6px 12px;font-size:11px;font-family:inherit;background:#1a0000;color:#ff4444;border:1px solid #ff4444;cursor:pointer;letter-spacing:1px;white-space:nowrap;">CLEAR DATA</button>
       </div>
       <div class="profile-bar" id="prof1" onclick="window.selectProfile(1)">
         <div class="profile-bar-fill" id="pfill1" style="background:#44aaff;width:0%"></div>
@@ -1483,7 +1486,7 @@ function updatePlayer(dt) {
   bowTimer=Math.max(0,bowTimer-dt);
   meleeFlash=Math.max(0,meleeFlash-dt);
   swiftTimer=Math.max(0,swiftTimer-dt);
-  if(adminTimer>0){ adminTimer=Math.max(0,adminTimer-dt); if(adminTimer<=0){ window.secretCodeActive=false; document.getElementById('admin-cancel').style.display='none'; } }
+  if(adminTimer>0){ adminTimer=Math.max(0,adminTimer-dt); }
   if(spinTimer>0) {
     spinTimer=Math.max(0,spinTimer-dt);
     spinAngle+=Math.PI*8*dt;  // fast full spin
@@ -2403,9 +2406,18 @@ function setDifficulty(d){
 }
 window.setDifficulty=setDifficulty;
 window.selectProfile=selectProfile;
+window.clearAllData=function(){
+  if(!confirm('Reset all save data? This cannot be undone.')) return;
+  for(let i=0;i<3;i++) localStorage.removeItem('mcDungStats_'+i);
+  localStorage.removeItem('mcDungActiveProfile');
+  activeProfile=0;
+  setDifficulty('adventure');
+  updateProfilesUI();
+};
 // Secret code rewards (inside IIFE scope to access game vars)
 const ADMIN_DUR=300; // 5 minutes in seconds
 let adminTimer=0;
+let adminTimeout=null;
 function applySecretRewards(){
   if(!window.secretCodeActive) return;
   player.armorItem=ARMOR_DEFS[ARMOR_DEFS.length-1]; // Diamond Armor
@@ -2413,11 +2425,26 @@ function applySecretRewards(){
   strengthTimer=STRENGTH_DUR;
   adminTimer=ADMIN_DUR;
   document.getElementById('admin-cancel').style.display='block';
+  // Reset any existing timeout and start a real 5-minute clock
+  if(adminTimeout) clearTimeout(adminTimeout);
+  adminTimeout=setTimeout(()=>{
+    window.secretCodeActive=false;
+    adminTimer=0;
+    swiftTimer=0;
+    strengthTimer=0;
+    if(player) player.armorItem=null;
+    document.getElementById('admin-cancel').style.display='none';
+    adminTimeout=null;
+  }, ADMIN_DUR*1000);
 }
 window.applySecretRewards=applySecretRewards;
 window.deactivateAdmin=function(){
+  if(adminTimeout){ clearTimeout(adminTimeout); adminTimeout=null; }
   window.secretCodeActive=false;
   adminTimer=0;
+  swiftTimer=0;
+  strengthTimer=0;
+  player.armorItem=null;
   document.getElementById('admin-cancel').style.display='none';
 };
 
