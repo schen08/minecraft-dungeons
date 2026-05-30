@@ -185,6 +185,36 @@
     padding: 2px 6px; letter-spacing: 1px;
   }
   #admin-cancel:hover { background: #550000; color: #ff6666; }
+
+  /* ── Practice Mode ── */
+  #practiceModeBtn { background: linear-gradient(135deg,#1a5e2a,#145020) !important; border: 2px solid #44ff88 !important; }
+  #practiceModeBtn:hover { box-shadow: 0 0 20px rgba(68,255,136,0.5) !important; }
+  #practiceMenu {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.93);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 11px; z-index: 100; font-family: 'Courier New', monospace;
+  }
+  #practiceMenu h2 { font-size: 22px; color: #44ff88; letter-spacing: 3px; margin-bottom: 2px; }
+  .pm-desc { color: #555; font-size: 10px; letter-spacing: 2px; margin-bottom: 6px; }
+  .pm-btn { padding: 11px 16px; font-size: 12px; font-family: inherit; border: 2px solid #444; background: #111; color: #ccc; cursor: pointer; letter-spacing: 1px; width: 300px; text-align: left; transition: all 0.12s; position: relative; }
+  .pm-btn:hover { border-color: #44ff88; color: #44ff88; background: #0a1a0a; }
+  .pm-btn .pm-best { position: absolute; right: 12px; color: #555; font-size: 10px; }
+  .pm-btn .pm-hint { display: block; font-size: 9px; color: #444; margin-top: 3px; letter-spacing: 0.5px; }
+  .pm-back { padding: 7px 22px; font-family: inherit; font-size: 11px; background: #111; color: #555; border: 1px solid #333; cursor: pointer; margin-top: 4px; letter-spacing: 1px; }
+  .pm-back:hover { color: #aaa; border-color: #666; }
+  #practiceResults {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.93);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; z-index: 100; font-family: 'Courier New', monospace;
+  }
+  #prTitle { font-size: 22px; color: #ffd700; letter-spacing: 3px; }
+  #prStats { font-size: 14px; color: #bbb; text-align: center; line-height: 1.7; }
+  #prStats b { color: #44ff88; }
+  #prNewBest { font-size: 13px; color: #ffd700; letter-spacing: 2px; min-height: 18px; }
+  .pr-btn { padding: 10px 28px; font-family: inherit; font-size: 13px; background: #1a5e2a; color: #fff; border: 2px solid #44ff88; cursor: pointer; letter-spacing: 1px; transition: background 0.12s; }
+  .pr-btn:hover { background: #2a8e3a; }
+  .pr-back { padding: 7px 22px; font-family: inherit; font-size: 11px; background: #111; color: #555; border: 1px solid #333; cursor: pointer; letter-spacing: 1px; }
+  .pr-back:hover { color: #aaa; border-color: #666; }
 </style>
 </head>
 <body>
@@ -253,7 +283,39 @@
     <p id="deathMsg"></p>
     <p id="winMsg"></p>
     <button class="btn" id="startBtn" onclick="window.startGame()">ENTER DUNGEON</button>
+    <button class="btn" id="practiceModeBtn" onclick="window.showPracticeMenu()">⚔ PRACTICE MODE</button>
   </div>
+</div>
+<!-- Practice Menu Overlay -->
+<div id="practiceMenu">
+  <h2>⚔ PRACTICE MODE ⚔</h2>
+  <p class="pm-desc">CHOOSE A MINI-GAME</p>
+  <button class="pm-btn" onclick="window.startPractice('target')">
+    🎯 TARGET PRACTICE<span class="pm-best" id="pm-target-best">BEST: 0</span>
+    <span class="pm-hint">30 seconds — hit as many dummies as possible</span>
+  </button>
+  <button class="pm-btn" onclick="window.startPractice('dodge')">
+    💨 DODGE MASTER<span class="pm-best" id="pm-dodge-best">BEST: 0s</span>
+    <span class="pm-hint">survive incoming projectiles — no enemies</span>
+  </button>
+  <button class="pm-btn" onclick="window.startPractice('speedkill')">
+    ⚔ SPEED KILL<span class="pm-best" id="pm-speed-best">BEST: --</span>
+    <span class="pm-hint">kill 10 enemies as fast as possible</span>
+  </button>
+  <button class="pm-btn" onclick="window.startPractice('survival')">
+    🌊 SURVIVAL WAVE<span class="pm-best" id="pm-survival-best">BEST: 0 waves</span>
+    <span class="pm-hint">endless waves — each wave spawns more enemies</span>
+  </button>
+  <button class="pm-back" onclick="window.hidePracticeMenu()">← BACK TO MENU</button>
+</div>
+<!-- Practice Results Overlay -->
+<div id="practiceResults">
+  <div id="prTitle"></div>
+  <div id="prStats"></div>
+  <div id="prNewBest"></div>
+  <button class="pr-btn" onclick="window.retryPractice()">RETRY</button>
+  <button class="pr-back" onclick="window.showPracticeMenu()">◀ PRACTICE MENU</button>
+  <button class="pr-back" onclick="window.backToMainMenu()">⌂ MAIN MENU</button>
 </div>
 
 <script>
@@ -1952,6 +2014,7 @@ function renderHUD() {
     ctx.fillStyle='#ffddcc'; ctx.font='bold 10px monospace';
     ctx.fillText('💪 STRENGTH x3  '+Math.ceil(strengthTimer)+'s', 14, buffY+13);
   }
+  if(!practiceMode) {
   // Score
   ctx.fillStyle='#ffd700'; ctx.font='bold 13px monospace';
   ctx.fillText('SCORE: '+score, CW/2-50, 22);
@@ -1975,6 +2038,7 @@ function renderHUD() {
   } else {
     ctx.fillStyle='#88ff88'; ctx.font='11px monospace';
     ctx.fillText('Find Stairs ↓', CW/2-40, 52);
+  }
   }
   // Controls hint (bottom)
   // Teleport cooldown pip
@@ -2002,8 +2066,8 @@ function renderHUD() {
   ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fillRect(0,CH-20,CW,20);
   ctx.fillStyle='#888'; ctx.font='9px monospace';
   ctx.fillText('WASD:Move  LClick/Space:Atk  R:Bow  F:Roll  H:Heal  B:Bomb  T:Teleport  E:Pickup', 10, CH-6);
-  // Minimap
-  renderMinimap();
+  // Minimap (skip in practice — single room looks odd)
+  if(!practiceMode) renderMinimap();
 }
 
 function renderMinimap() {
@@ -2625,6 +2689,7 @@ function loop(ts) {
   updateProjectiles(dt);
   updateParticles(dt);
   updateLoot(dt);
+  if(practiceMode) updatePractice(dt);
   updateCamera(dt);
   updateTransition(dt);
 
@@ -2685,6 +2750,7 @@ function loop(ts) {
   ctx.restore();
   ctx.restore();  // camera transform
   renderHUD();
+  if(practiceMode) renderPracticeHUD();
 
   // Transition overlay
   if(transitioning&&transAlpha>0) {
@@ -2700,6 +2766,300 @@ function loop(ts) {
     }
   }
 }
+
+// ========== PRACTICE MINI-GAMES ==========
+
+const practiceBests = {
+  target:    parseInt(localStorage.getItem('pd_target')   || '0'),
+  dodge:     parseFloat(localStorage.getItem('pd_dodge')  || '0'),
+  speedkill: parseFloat(localStorage.getItem('pd_speed')  || '0'),
+  survival:  parseInt(localStorage.getItem('pd_survival') || '0'),
+};
+
+let practiceMode   = null;
+let practiceActive = false;
+let practiceTimer  = 0;
+let practiceScore  = 0;
+let practiceWave   = 0;
+let practiceEmitT  = 0;
+let practiceKills  = 0;
+
+// Override endGame so practice deaths show results instead of saving to profile
+const _origEndGame = endGame;
+endGame = function(win) {
+  if(practiceActive) { endPractice(); return; }
+  _origEndGame(win);
+};
+
+function buildPracticeArena() {
+  const W = 26, H = 20;
+  map.w = W; map.h = H;
+  map.tiles = new Uint8Array(W * H);
+  map.tiles.fill(T.WALL);
+  map.rooms = [{x:1,y:1,w:W-2,h:H-2,cleared:false,type:'start',enemies:[],spawns:[]}];
+  map.doors = [];
+  for(let ty=1; ty<H-1; ty++)
+    for(let tx=1; tx<W-1; tx++)
+      setTile(tx, ty, T.FLOOR);
+}
+
+function practiceReset() {
+  const cx = map.w * TILE / 2, cy = map.h * TILE / 2;
+  player = makePlayer(cx, cy);
+  player.armorItem = ARMOR_DEFS[2]; // iron armor
+  camera.x = player.x - CW/2;
+  camera.y = player.y - CH/2;
+  enemies=[]; projectiles=[]; particles=[]; lootItems=[]; dmgNumbers=[];
+  score=0;
+  attackTimer=0; bowTimer=0; swiftTimer=0; strengthTimer=0;
+  noHitTimer=0; spinTimer=0; spinAngle=0; teleportCd=0;
+  hitCount=0; rollTimer=0; rollCd=0; healPotionCd=0; bombCd=0;
+  mouseWasLeft=false; mouseWasRight=false;
+  transitioning=false; transAlpha=0;
+}
+
+function spawnTargetDummies(n) {
+  rngSeed = Date.now() ^ (n * 7919);
+  for(let i=0; i<n; i++) {
+    const tx = 2 + Math.floor(rng() * (map.w - 4));
+    const ty = 2 + Math.floor(rng() * (map.h - 4));
+    const e = makeEnemy('zombie', tx*TILE + TILE/2, ty*TILE + TILE/2, 0.3);
+    e.def = Object.assign({}, e.def, {aggro:0, spd:0, dmg:0, attkR:0});
+    e.isDummy = true;
+    e.roomType = 'start';
+    enemies.push(e);
+  }
+}
+
+function spawnPracticeWave(wave) {
+  rngSeed = Date.now() ^ (wave * 31337);
+  const count = 2 + wave * 2;
+  const typeList = ['zombie','skeleton','spider'];
+  for(let i=0; i<count; i++) {
+    const tx = 2 + Math.floor(rng() * (map.w - 4));
+    const ty = 2 + Math.floor(rng() * (map.h - 4));
+    const t  = typeList[Math.floor(rng() * typeList.length)];
+    const e  = makeEnemy(t, tx*TILE + TILE/2, ty*TILE + TILE/2, 1 + (wave-1)*0.2);
+    e.roomType = 'start';
+    enemies.push(e);
+  }
+}
+
+window.startPractice = function(mode) {
+  practiceMode   = mode;
+  practiceActive = true;
+  practiceTimer  = 0;
+  practiceScore  = 0;
+  practiceWave   = 1;
+  practiceEmitT  = 0;
+  practiceKills  = 0;
+
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('practiceMenu').style.display = 'none';
+  document.getElementById('practiceResults').style.display = 'none';
+  document.getElementById('onscreen-controls').classList.add('visible');
+
+  buildPracticeArena();
+  practiceReset();
+  gameRunning = true;
+  gameState   = 'playing';
+  getAudio().resume && getAudio().resume();
+
+  if(mode === 'target') {
+    practiceTimer = 30;
+    spawnTargetDummies(5);
+  } else if(mode === 'dodge') {
+    player.maxHp = 300; player.hp = 300;
+  } else if(mode === 'speedkill') {
+    rngSeed = Date.now();
+    const typeList = ['zombie','skeleton','spider'];
+    for(let i=0; i<10; i++) {
+      const tx = 2 + Math.floor(rng() * (map.w - 4));
+      const ty = 2 + Math.floor(rng() * (map.h - 4));
+      const e  = makeEnemy(typeList[i%3], tx*TILE + TILE/2, ty*TILE + TILE/2, 1);
+      e.roomType = 'start';
+      enemies.push(e);
+    }
+  } else if(mode === 'survival') {
+    spawnPracticeWave(1);
+  }
+  startAmb(40);
+};
+
+function updatePractice(dt) {
+  if(!practiceActive) return;
+
+  if(practiceMode === 'target') {
+    practiceTimer = Math.max(0, practiceTimer - dt);
+    practiceScore = practiceKills;
+    const alive = enemies.filter(e=>e.alive).length;
+    if(alive < 3) spawnTargetDummies(5 - alive);
+    if(lootItems.length > 15) lootItems = lootItems.slice(-10);
+    if(practiceTimer <= 0) endPractice();
+
+  } else if(practiceMode === 'dodge') {
+    practiceTimer += dt;
+    practiceEmitT -= dt;
+    if(practiceEmitT <= 0) {
+      practiceEmitT = Math.max(0.18, 0.5 - practiceTimer * 0.005);
+      rngSeed = Date.now();
+      const side = Math.floor(rng() * 4);
+      let ox, oy;
+      if(side===0){ ox=(2+rng()*(map.w-4))*TILE; oy=TILE*1.5; }
+      else if(side===1){ ox=(map.w-2)*TILE-4; oy=(2+rng()*(map.h-4))*TILE; }
+      else if(side===2){ ox=(2+rng()*(map.w-4))*TILE; oy=(map.h-2)*TILE-4; }
+      else{ ox=TILE*1.5; oy=(2+rng()*(map.h-4))*TILE; }
+      const ang = Math.atan2(player.y-oy, player.x-ox) + (rng()-0.5)*0.35;
+      projectiles.push({x:ox,y:oy,vx:Math.cos(ang)*260,vy:Math.sin(ang)*260,
+        dmg:30, owner:'enemy', alive:true, r:5, color:'#cc44ff'});
+    }
+    if(player.hp <= 0) endPractice();
+
+  } else if(practiceMode === 'speedkill') {
+    practiceTimer += dt;
+    if(enemies.length === 0 && practiceTimer > 0.5) endPractice();
+
+  } else if(practiceMode === 'survival') {
+    practiceTimer += dt;
+    if(enemies.length === 0 && practiceTimer > 0.5) {
+      practiceWave++;
+      practiceScore = practiceWave - 1;
+      spawnPracticeWave(practiceWave);
+      dmgNumbers.push({x:player.x,y:player.y-44,
+        val:'WAVE '+practiceWave+'!', life:2.0, vy:-45, color:'#ffd700', big:true});
+    }
+    if(player.hp <= 0) endPractice();
+  }
+}
+
+function endPractice() {
+  if(!practiceActive) return;
+  practiceActive = false;
+  gameRunning    = false;
+  if(ambOsc) try{ ambGain.gain.setTargetAtTime(0,getAudio().currentTime,0.5); }catch(e){}
+
+  let newBest = '';
+  if(practiceMode === 'target') {
+    if(practiceScore > practiceBests.target) {
+      practiceBests.target = practiceScore;
+      localStorage.setItem('pd_target', practiceScore);
+      newBest = '★ NEW BEST!';
+    }
+  } else if(practiceMode === 'dodge') {
+    const t = Math.round(practiceTimer*10)/10;
+    if(t > practiceBests.dodge) {
+      practiceBests.dodge = t;
+      localStorage.setItem('pd_dodge', t);
+      newBest = '★ NEW BEST!';
+    }
+  } else if(practiceMode === 'speedkill') {
+    const t = Math.round(practiceTimer*100)/100;
+    if(practiceBests.speedkill===0 || t < practiceBests.speedkill) {
+      practiceBests.speedkill = t;
+      localStorage.setItem('pd_speed', t);
+      newBest = '★ NEW BEST!';
+    }
+  } else if(practiceMode === 'survival') {
+    if(practiceScore > practiceBests.survival) {
+      practiceBests.survival = practiceScore;
+      localStorage.setItem('pd_survival', practiceScore);
+      newBest = '★ NEW BEST!';
+    }
+  }
+  showPracticeResults(newBest);
+}
+
+function showPracticeResults(newBest) {
+  document.getElementById('onscreen-controls').classList.remove('visible');
+  const title = document.getElementById('prTitle');
+  const stats = document.getElementById('prStats');
+
+  if(practiceMode==='target') {
+    title.textContent = '🎯 TARGET PRACTICE';
+    stats.innerHTML = 'Hits: <b>'+practiceScore+'</b><br>Best: <b>'+practiceBests.target+'</b>';
+  } else if(practiceMode==='dodge') {
+    const t = Math.round(practiceTimer*10)/10;
+    title.textContent = '💨 DODGE MASTER';
+    stats.innerHTML = 'Survived: <b>'+t+'s</b><br>Best: <b>'+practiceBests.dodge+'s</b>';
+  } else if(practiceMode==='speedkill') {
+    const t = Math.round(practiceTimer*100)/100;
+    const bst = practiceBests.speedkill===0?'--':practiceBests.speedkill+'s';
+    title.textContent = '⚔ SPEED KILL';
+    stats.innerHTML = 'Time: <b>'+t+'s</b><br>Best: <b>'+bst+'</b>';
+  } else if(practiceMode==='survival') {
+    title.textContent = '🌊 SURVIVAL WAVE';
+    stats.innerHTML = 'Waves cleared: <b>'+practiceScore+'</b><br>Best: <b>'+practiceBests.survival+'</b>';
+  }
+  document.getElementById('prNewBest').textContent = newBest || '';
+  document.getElementById('practiceResults').style.display = 'flex';
+}
+
+function renderPracticeHUD() {
+  const cx = CW/2;
+  ctx.fillStyle='rgba(0,0,0,0.78)'; ctx.fillRect(cx-140,3,280,40);
+  ctx.textAlign='center';
+
+  if(practiceMode==='target') {
+    ctx.fillStyle='#ffd700'; ctx.font='bold 15px monospace';
+    ctx.fillText('🎯  '+Math.ceil(Math.max(0,practiceTimer))+'s   HITS: '+practiceScore, cx, 22);
+    ctx.fillStyle='#555'; ctx.font='10px monospace';
+    ctx.fillText('BEST: '+practiceBests.target, cx, 38);
+  } else if(practiceMode==='dodge') {
+    ctx.fillStyle='#cc44ff'; ctx.font='bold 15px monospace';
+    ctx.fillText('💨  SURVIVE: '+(Math.floor(practiceTimer*10)/10)+'s', cx, 22);
+    ctx.fillStyle='#555'; ctx.font='10px monospace';
+    ctx.fillText('BEST: '+practiceBests.dodge+'s', cx, 38);
+  } else if(practiceMode==='speedkill') {
+    const rem=enemies.filter(e=>e.alive).length;
+    ctx.fillStyle='#ff6644'; ctx.font='bold 15px monospace';
+    ctx.fillText('⚔  '+(Math.floor(practiceTimer*10)/10)+'s   LEFT: '+rem, cx, 22);
+    const bst=practiceBests.speedkill===0?'--':practiceBests.speedkill+'s';
+    ctx.fillStyle='#555'; ctx.font='10px monospace';
+    ctx.fillText('BEST: '+bst, cx, 38);
+  } else if(practiceMode==='survival') {
+    const rem=enemies.filter(e=>e.alive).length;
+    ctx.fillStyle='#44ff88'; ctx.font='bold 15px monospace';
+    ctx.fillText('🌊  WAVE '+practiceWave+'   ENEMIES: '+rem, cx, 22);
+    ctx.fillStyle='#555'; ctx.font='10px monospace';
+    ctx.fillText('BEST: '+practiceBests.survival+' waves', cx, 38);
+  }
+  ctx.textAlign='left';
+}
+
+window.showPracticeMenu = function() {
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('practiceResults').style.display = 'none';
+  document.getElementById('pm-target-best').textContent   = 'BEST: '+practiceBests.target;
+  document.getElementById('pm-dodge-best').textContent    = 'BEST: '+practiceBests.dodge+'s';
+  const spd = practiceBests.speedkill===0?'--':practiceBests.speedkill+'s';
+  document.getElementById('pm-speed-best').textContent    = 'BEST: '+spd;
+  document.getElementById('pm-survival-best').textContent = 'BEST: '+practiceBests.survival;
+  document.getElementById('practiceMenu').style.display   = 'flex';
+};
+window.hidePracticeMenu = function() {
+  document.getElementById('practiceMenu').style.display = 'none';
+  document.getElementById('overlay').classList.remove('hidden');
+};
+window.retryPractice = function() {
+  document.getElementById('practiceResults').style.display = 'none';
+  window.startPractice(practiceMode);
+};
+window.backToMainMenu = function() {
+  document.getElementById('practiceResults').style.display = 'none';
+  practiceMode   = null;
+  practiceActive = false;
+  gameRunning    = false;
+  document.getElementById('onscreen-controls').classList.remove('visible');
+  document.getElementById('overlay').classList.remove('hidden');
+  document.getElementById('startBtn').textContent = 'ENTER DUNGEON';
+};
+
+// Track kills during practice separately from main game score
+const _origKillEnemy = killEnemy;
+killEnemy = function(e) {
+  _origKillEnemy(e);
+  if(practiceActive) practiceKills++;
+};
 
 requestAnimationFrame(loop);
 </script>
