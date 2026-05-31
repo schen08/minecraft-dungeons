@@ -2788,8 +2788,11 @@ let practiceTimer  = 0;
 let practiceScore  = 0;
 let practiceWave   = 0;
 let practiceEmitT  = 0;
-let practiceKills       = 0;
-let practiceTeleTargets = [];
+let practiceKills          = 0;
+let practiceTeleTargets    = [];
+let practicePlatforms      = [];
+let practicePrevPlayerX    = 0;
+let practicePrevPlayerY    = 0;
 
 // Override endGame so practice deaths show results instead of saving to profile
 const _origEndGame = endGame;
@@ -2907,7 +2910,14 @@ window.startPractice = function(mode) {
     practiceTimer = 30;
     practiceTeleTargets = [];
     teleportCd = 0;
-    spawnTeleTargets(3);
+    // Spawn 3 moving platforms: horizontal, vertical, diagonal
+    practicePlatforms = [
+      {x:180, y:200, w:64, h:64, vx:100, vy:  0, flashT:0},
+      {x:640, y:440, w:64, h:64, vx:  0, vy: 90, flashT:0},
+      {x:416, y:150, w:64, h:64, vx: 75, vy: 65, flashT:0},
+    ];
+    practicePrevPlayerX = player.x;
+    practicePrevPlayerY = player.y;
   }
   startAmb(40);
 };
@@ -2957,35 +2967,45 @@ function updatePractice(dt) {
     if(player.hp <= 0) endPractice();
 
   } else if(practiceMode === 'tele') {
-    const TARGET_LIFE = 3.5;
+    const ARENA_L = TILE*2, ARENA_R = (map.w-2)*TILE;
+    const ARENA_T = TILE*2, ARENA_B = (map.h-2)*TILE;
     practiceTimer = Math.max(0, practiceTimer - dt);
 
-    // Age all targets
-    for(const t of practiceTeleTargets) t.age += dt;
+    // Move platforms and bounce off arena walls
+    for(const p of practicePlatforms) {
+      p.flashT = Math.max(0, p.flashT - dt);
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      const hw = p.w/2, hh = p.h/2;
+      if(p.x - hw < ARENA_L) { p.x = ARENA_L + hw;  p.vx =  Math.abs(p.vx); }
+      if(p.x + hw > ARENA_R) { p.x = ARENA_R - hw;  p.vx = -Math.abs(p.vx); }
+      if(p.y - hh < ARENA_T) { p.y = ARENA_T + hh;  p.vy =  Math.abs(p.vy); }
+      if(p.y + hh > ARENA_B) { p.y = ARENA_B - hh;  p.vy = -Math.abs(p.vy); }
+    }
 
-    // Check collection (player walks or blinks within range)
-    for(const t of practiceTeleTargets) {
-      if(t.collected) continue;
-      const d = Math.sqrt((player.x-t.x)**2 + (player.y-t.y)**2);
-      if(d < 48) {
-        t.collected = true;
-        practiceScore++;
-        practiceKills++;
-        spawnParticles(t.x, t.y, 16, ['#aa44ff','#dd88ff','#ffffff','#8844ff'], 80, 210, 0.6, 4);
-        dmgNumbers.push({x:t.x, y:t.y-18, val:'+1', life:0.9, vy:-55, color:'#dd88ff', big:false});
-        playSound(660, 'sine', 0.14, 300, 0.22);
+    // Detect teleport: position jumped more than 80px in one frame
+    const jumpDx = player.x - practicePrevPlayerX;
+    const jumpDy = player.y - practicePrevPlayerY;
+    if(jumpDx*jumpDx + jumpDy*jumpDy > 80*80) {
+      for(const p of practicePlatforms) {
+        const hw = p.w/2, hh = p.h/2;
+        if(player.x > p.x-hw && player.x < p.x+hw &&
+           player.y > p.y-hh && player.y < p.y+hh) {
+          practiceScore++;
+          p.flashT = 0.55;
+          // Each successful blink speeds the platform up slightly
+          const spd = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
+          if(spd > 0) { const s = Math.min(spd*1.12, 230)/spd; p.vx*=s; p.vy*=s; }
+          else { p.vx = 90 + Math.random()*50; }
+          spawnParticles(player.x, player.y, 18, ['#aa44ff','#dd88ff','#ffffff','#8844ff'], 90, 220, 0.6, 4);
+          dmgNumbers.push({x:player.x, y:player.y-24, val:'+1', life:1.0, vy:-55, color:'#dd88ff', big:true});
+          playSound(660, 'sine', 0.15, 350, 0.25);
+          break;
+        }
       }
     }
-
-    // Puff when targets expire
-    for(const t of practiceTeleTargets) {
-      if(!t.collected && t.age >= TARGET_LIFE)
-        spawnParticles(t.x, t.y, 5, ['#442255','#331144'], 30, 80, 0.35, 3);
-    }
-    practiceTeleTargets = practiceTeleTargets.filter(t => !t.collected && t.age < TARGET_LIFE);
-
-    // Keep 3 targets active at all times
-    while(practiceTeleTargets.length < 3) spawnTeleTargets(1);
+    practicePrevPlayerX = player.x;
+    practicePrevPlayerY = player.y;
 
     if(practiceTimer <= 0) endPractice();
   }
@@ -3056,7 +3076,7 @@ function showPracticeResults(newBest) {
     stats.innerHTML = 'Waves cleared: <b>'+practiceScore+'</b><br>Best: <b>'+practiceBests.survival+'</b>';
   } else if(practiceMode==='tele') {
     title.textContent = '🔮 TELEPORT BLINK';
-    stats.innerHTML = 'Orbs collected: <b>'+practiceScore+'</b><br>Best: <b>'+practiceBests.tele+'</b>';
+    stats.innerHTML = 'Platforms landed: <b>'+practiceScore+'</b><br>Best: <b>'+practiceBests.tele+'</b>';
   }
   document.getElementById('prNewBest').textContent = newBest || '';
   document.getElementById('practiceResults').style.display = 'flex';
@@ -3092,7 +3112,7 @@ function renderPracticeHUD() {
     ctx.fillText('BEST: '+practiceBests.survival+' waves', cx, 38);
   } else if(practiceMode==='tele') {
     ctx.fillStyle='#cc88ff'; ctx.font='bold 15px monospace';
-    ctx.fillText('🔮  '+Math.ceil(Math.max(0,practiceTimer))+'s   ORBS: '+practiceScore, cx, 22);
+    ctx.fillText('🔮  '+Math.ceil(Math.max(0,practiceTimer))+'s   LANDED: '+practiceScore, cx, 22);
     ctx.fillStyle='#555'; ctx.font='10px monospace';
     ctx.fillText('BEST: '+practiceBests.tele+'   press T to blink', cx, 38);
   }
@@ -3100,42 +3120,73 @@ function renderPracticeHUD() {
 }
 
 function renderPracticeTeleTargets() {
-  const TARGET_LIFE = 3.5;
   const now = performance.now() / 1000;
-  for(const t of practiceTeleTargets) {
-    const frac = 1 - t.age / TARGET_LIFE;
-    const r    = 38 * frac;
-    const sx   = t.x - camera.x, sy = t.y - camera.y;
-    const pulse  = 0.72 + 0.28 * Math.sin(now * 5 + t.x * 0.05);
-    const urgent = frac < 0.35;
-    const col    = urgent ? '#ff4466' : '#bb55ff';
+  for(const p of practicePlatforms) {
+    const sx = p.x - camera.x, sy = p.y - camera.y;
+    const hw = p.w/2, hh = p.h/2;
+    const spd = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
+    const flash = p.flashT > 0;
+    const pulse = 0.7 + 0.3 * Math.sin(now*3 + p.x*0.01);
 
     ctx.save();
-    // Outer glow ring
-    ctx.globalAlpha = frac * 0.32 * pulse;
-    ctx.strokeStyle = col;
-    ctx.lineWidth   = 9;
-    ctx.beginPath(); ctx.arc(sx, sy, r + 7, 0, Math.PI*2); ctx.stroke();
 
-    // Main ring
-    ctx.globalAlpha = frac * pulse;
-    ctx.strokeStyle = col;
-    ctx.lineWidth   = 2;
-    ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2); ctx.stroke();
+    // Motion trail — ghost copies behind the moving direction
+    if(spd > 0) {
+      const nx = p.vx/spd, ny = p.vy/spd;
+      for(let i=3; i>=1; i--) {
+        ctx.globalAlpha = 0.07 * i;
+        ctx.fillStyle = '#6622aa';
+        ctx.fillRect(sx - hw - nx*i*9, sy - hh - ny*i*9, p.w, p.h);
+      }
+    }
 
-    // Inner crosshair
-    ctx.globalAlpha = frac * 0.65;
-    ctx.strokeStyle = col;
-    ctx.lineWidth   = 1;
-    ctx.beginPath();
-    ctx.moveTo(sx-9, sy); ctx.lineTo(sx+9, sy);
-    ctx.moveTo(sx, sy-9); ctx.lineTo(sx, sy+9);
-    ctx.stroke();
+    // Drop shadow
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(sx - hw + 5, sy + hh, p.w, 6);
 
-    // Center dot
-    ctx.globalAlpha = frac;
-    ctx.fillStyle   = urgent ? '#ff8899' : '#ddaaff';
-    ctx.beginPath(); ctx.arc(sx, sy, 4, 0, Math.PI*2); ctx.fill();
+    // Platform body
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = flash ? '#e8d0ff' : '#3a1a66';
+    ctx.fillRect(sx - hw, sy - hh, p.w, p.h);
+
+    // Top + left highlight (raised look)
+    ctx.fillStyle = flash ? '#ffffff' : '#8855cc';
+    ctx.fillRect(sx - hw,     sy - hh, p.w, 5);
+    ctx.fillRect(sx - hw,     sy - hh, 5,   p.h);
+
+    // Bottom + right dark edge (depth)
+    ctx.fillStyle = flash ? '#cc88ff' : '#1a0033';
+    ctx.fillRect(sx - hw,     sy + hh - 5, p.w, 5);
+    ctx.fillRect(sx + hw - 5, sy - hh,     5,   p.h);
+
+    // Pulsing outer glow
+    ctx.globalAlpha = flash ? (p.flashT/0.55)*0.55 : 0.22*pulse;
+    ctx.strokeStyle = flash ? '#cc44ff' : '#8833cc';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(sx - hw, sy - hh, p.w, p.h);
+
+    // Direction arrow
+    if(spd > 0) {
+      ctx.globalAlpha = flash ? 1 : 0.85;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(Math.atan2(p.vy, p.vx));
+      ctx.strokeStyle = flash ? '#ffffff' : '#ddaaff';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-13, 0); ctx.lineTo(13, 0);
+      ctx.moveTo(8, -6);  ctx.lineTo(13, 0); ctx.lineTo(8, 6);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // "BLINK" label
+    ctx.globalAlpha = flash ? 1 : 0.6*pulse;
+    ctx.font = 'bold 9px monospace';
+    ctx.fillStyle = flash ? '#ffffff' : '#cc88ff';
+    ctx.textAlign = 'center';
+    ctx.fillText('BLINK', sx, sy + 4);
 
     ctx.restore();
   }
