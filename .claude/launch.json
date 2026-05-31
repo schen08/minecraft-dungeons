@@ -4,9 +4,8 @@
     {
       "name": "ducky-dungeons",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "."],
-      "port": 5501,
-      "autoPort": true
+      "runtimeArgs": ["serve", "-p", "5502", "."],
+      "port": 5502
     }
   ]
 }
